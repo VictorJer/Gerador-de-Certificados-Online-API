@@ -1,0 +1,72 @@
+using GeradorCertificados.Dominio.Compartilhado;
+using GeradorCertificados.Dominio.Compartilhado.Auth;
+using GeradorCertificados.Dominio.Modulos.ModuloCertificado;
+using GeradorCertificados.Dominio.Modulos.ModuloCurso;
+using GeradorCertificados.Dominio.Modulos.Pdf;
+using GeradorCertificados.Infraestrutura.Compartilhado.Auth;
+using GeradorCertificados.Infraestrutura.Compartilhado.Orm;
+using GeradorCertificados.Infraestrutura.Modulos.Certificados;
+using GeradorCertificados.Infraestrutura.Modulos.Cursos;
+using GeradorCertificados.Infraestrutura.PdfGeneretor;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+
+namespace GeradorCertificados.Infraestrutura;
+
+public static class DependencyInjection
+{
+    public static void AddInfrastructureServices(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
+    {
+        services.AddScoped<IGerenciadorDeIdentidade, GerenciadorDeIdentidade>();
+        services.AddScoped<IRepositorioCurso, RepositorioCursoEmOrm>();
+        services.AddScoped<IRepositorioCertificado, RepositorioCertificadoEmOrm>();
+        services.AddScoped<IGerarPdf, GerarPdf>();
+
+        services.AddDataProtection();
+        services.AddIdentityCore<IdentityUser<Guid>>(options =>
+        {
+            options.User.RequireUniqueEmail = true;
+            options.SignIn.RequireConfirmedEmail = false;
+            options.Password.RequiredLength = 8;
+            options.Password.RequireDigit = true;
+            options.Password.RequireNonAlphanumeric = true;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireLowercase = false;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.AllowedForNewUsers = true;
+        })
+        .AddRoles<IdentityRole<Guid>>()
+        .AddEntityFrameworkStores<GeradorCertificadosDbContext>();
+
+        services.AddDbContext<GeradorCertificadosDbContext>(options =>
+        {
+            if (configuration["Infra:DatabaseProvider"] == "InMemory")
+            {
+                options.UseInMemoryDatabase("GeradorCertificados");
+            }
+            else
+            {
+                string? connectionString = configuration.GetConnectionString("SqlServerEF");
+
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    throw new InvalidOperationException(
+                        $"A connection string \"SqlServerEF\" não foi encontrada."
+                    );
+                }
+
+                options.UseSqlServer(connectionString, opt =>
+                {
+                    opt.EnableRetryOnFailure(3);
+                });
+            }
+        });
+    }
+}

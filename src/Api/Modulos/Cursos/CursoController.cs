@@ -1,0 +1,90 @@
+using GeradorCertificados.Aplicacao.Modulos.Cursos;
+using GeradorCertificados.Aplicacao.Modulos.Dtos.Cursos;
+using GeradorCertificados.WebApi.Compartilhado.Http;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace GeradorCertificados.WebApi.Modulos.Cursos;
+
+[ApiController]
+[Route("api/curso")]
+public class CursoController(IMediator mediator) : ControllerBase
+{
+    [HttpPost]
+    [ProducesResponseType<CadastrarCursoResponce>(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+
+    public async Task<ActionResult<CadastrarCursoResponce>> CadastrarCurso(CadastrarCursoRequest request)
+    {
+        var result = await mediator.Send(new CadastrarCursoCommand(
+            request.Nome,
+            request.Descricao,
+            request.CargaHoraria,
+            request.DataConclusao));
+
+        if (result.IsFailed)
+        {
+            return this.ProblemDetails(result);
+        }
+
+        return CreatedAtAction(
+            nameof(SelecionarPorId),
+            new { id = result.Value },
+            new CadastrarCursoResponce(result.Value)
+        );
+    }
+
+    [ProducesResponseType<CadastrarCursoResponce>(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<CursoDto>> SelecionarPorId(Guid id)
+    {
+        var result = await mediator.Send(new SelecionarCursoPorIdQuery(id));
+
+        if (result.IsFailed)
+        {
+            return this.ProblemDetails(result);
+        }
+
+        return Ok(result.Value);
+    }
+
+    [Authorize]
+    [HttpGet]
+    [ProducesResponseType<List<CursoDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<List<CursoDto>>> SelecionarTodos(
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new SelecionarTodosCursosQuery(),
+            cancellationToken);
+
+        if (result.IsFailed)
+            return this.ProblemDetails(result);
+
+        return Ok(result.Value);
+    }
+
+    [Authorize]
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType<bool>(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<bool>> ExcluirPorId(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new ExcluirCursoPorIdCommand(id),
+            cancellationToken);
+
+        if (result.IsFailed)
+            return this.ProblemDetails(result);
+
+        return Ok(result.Value);
+    }
+}

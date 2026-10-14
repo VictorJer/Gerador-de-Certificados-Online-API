@@ -1,0 +1,83 @@
+using GeradorCertificados.Aplicacao.Modulos.Certificados;
+using GeradorCertificados.Aplicacao.Modulos.Certificados.DTOs;
+using GeradorCertificados.WebApi.Compartilhado.Http;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace GeradorCertificados.WebApi.Modulos.Certificados;
+
+[ApiController]
+[Route("api/certificado")]
+public class CertificadosController(IMediator mediator) : ControllerBase
+{
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType<SolicitarGeracaoDeCertificadosResponse>(StatusCodes.Status200OK)]
+    [HttpPost("{cursoId:guid}")]
+    public async Task<ActionResult<SolicitarGeracaoDeCertificadosResponse>> SolicitarGeracaoCertificados
+        (Guid cursoId, SolicitarGeracaoDeCertificadosCommand command)
+    {
+        var resultado = await mediator.Send(
+            new SolicitarGeracaoCommand(command.NomesAlunos, cursoId)
+        );
+
+        if (resultado.IsFailed)
+            return this.ProblemDetails(resultado);
+
+        return Ok(
+            resultado.Value
+        );
+    }
+
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType<SolicitarDownloadDeCertificadosCommand>(StatusCodes.Status200OK)]
+    [HttpGet("{cursoId:guid}/download")]
+    public async Task<ActionResult> DownloadCertificados(Guid cursoId)
+    {
+        var resultado = await mediator.Send(
+            new SolicitarDownloadDeCertificadosCommand(cursoId)
+        );
+
+        if (resultado.IsFailed)
+            return this.ProblemDetails(resultado);
+
+        return File(
+            resultado.Value.Arquivo,
+            "application/zip",
+            resultado.Value.NomeArquivo
+        );
+    }
+
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType<SelecionarCursoResponse>(StatusCodes.Status200OK)]
+    [HttpGet("{cursoId:guid}/status")]
+    public async Task<ActionResult<SelecionarCursoResponse>> ConsultaProcessamento(Guid cursoId)
+    {
+        var result = await mediator.Send(new
+            SelecionarCursoPorIDQuery(cursoId)
+        );
+
+        if (result.IsFailed)
+            return this.ProblemDetails(result);
+
+        return Ok(result.Value);
+    }
+
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType<SolicitarListaCertificadoResponse>(StatusCodes.Status200OK)]
+    [HttpGet("{cursoId:guid}/certificados")]
+    public async Task<ActionResult<SolicitarListaCertificadoResponse>> ListaCertificados(Guid cursoId)
+    {
+        var result = await mediator.Send(new
+            SelecionaCertificadoCursoPorIdQuery(cursoId));
+
+        if (result.IsFailed)
+            return this.ProblemDetails(result);
+
+        return Ok(result.Value);
+    }
+}

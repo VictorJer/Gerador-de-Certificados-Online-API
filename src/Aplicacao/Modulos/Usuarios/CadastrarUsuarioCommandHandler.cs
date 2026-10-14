@@ -1,0 +1,49 @@
+using FluentResults;
+using GeradorCertificados.Aplicacao.Modulos.Usuarios.Compartilhado;
+using GeradorCertificados.Aplicacao.Modulos.Usuarios.Util;
+using GeradorCertificados.Dominio.Compartilhado;
+using GeradorCertificados.Dominio.Compartilhado.Auth;
+using MediatR;
+
+namespace GeradorCertificados.Aplicacao.Modulos.Usuarios;
+
+public sealed class CadastrarUsuarioCommandHandler(
+    IGerenciadorDeIdentidade gerenciadorDeIdentidade,
+    IEmissorDeTokens emissorDeTokens
+) : IRequestHandler<CadastrarUsuarioCommand, Result<CadastrarUsuarioResponse>>
+{
+    public async Task<Result<CadastrarUsuarioResponse>> Handle(CadastrarUsuarioCommand command, CancellationToken cancellationToken)
+    {
+        Guid idUsuarioCadastrado = Guid.CreateVersion7();
+
+        try
+        {
+            await gerenciadorDeIdentidade.CadastrarAsync(
+               idUsuarioCadastrado,
+               command.Email,
+               command.Senha
+               );
+
+            var token = emissorDeTokens.CriarToken(idUsuarioCadastrado, command.Email);
+
+            return new CadastrarUsuarioResponse(
+                idUsuarioCadastrado,
+                command.Email.Split('@')[0],
+                token.Token);
+        }
+        catch (ConflitoDeIdentidadeException ex)
+        {
+            return Result.Fail(ErrosUsuario.ConflitoDeIdentidade(ex.Message));
+        }
+        catch (ValidacaoDeIdentidadeException ex)
+        {
+            return Result.Fail(ErrosUsuario.ValidacaoDeIdentidade(ex.Campo, ex.Message));
+        }
+        catch (ConflitoDePersistenciaException)
+        {
+            await gerenciadorDeIdentidade.ExcluirAsync(idUsuarioCadastrado);
+
+            return Result.Fail(ErrosUsuario.CadastroDuplicado());
+        }
+    }
+}
