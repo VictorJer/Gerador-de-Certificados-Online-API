@@ -1,8 +1,9 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink } from '@angular/router';
+import { LucideCircleArrowOutDownRight, LucideCircleArrowRight } from '@lucide/angular';
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterLink, LucideCircleArrowRight],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',
