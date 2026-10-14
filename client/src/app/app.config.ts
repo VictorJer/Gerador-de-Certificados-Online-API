@@ -7,9 +7,13 @@ const routes: Routes = [
     loadComponent: () => import('./home/home').then(c => c.Home),
   },
   {
+    path: 'cadastro',
+    loadComponent: () => import('./auth/cadastro/cadastro').then(c => c.Cadastro),
+  },
+  {
     path: '**',
     redirectTo: '',
-  }
+  },
 ];
 
 export const appConfig: ApplicationConfig = {
