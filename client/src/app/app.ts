@@ -3,9 +3,9 @@ import { RouterOutlet, RouterLink } from '@angular/router';
 import { LucideCircleArrowOutDownRight, LucideCircleArrowRight } from '@lucide/angular';
 
 @Component({
-  imports: [RouterLink, LucideCircleArrowRight],
+  imports: [ RouterOutlet],
   selector: 'app-root',
-  styleUrl: './app.css',
+  // styleUrl: './app.css',
   templateUrl: './app.html',
 })
 export class App {
